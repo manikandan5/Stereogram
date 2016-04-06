@@ -1,3 +1,6 @@
+// Skeleton code for B657 A4 Part 1.
+// D. Crandall
+//
 #include <vector>
 #include <iostream>
 #include <fstream>

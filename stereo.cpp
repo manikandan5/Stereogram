@@ -1,3 +1,10 @@
+// Skeleton code for B657 A4 Part 3.
+// D. Crandall
+//
+// Run like this, for example:
+//   ./stereo part3/Aloe/view1.png part3/Aloe/view5.png part3/Aloe/gt.png
+// and output files will appear in part3/Aloe
+//
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -9,11 +16,44 @@
 using namespace cimg_library;
 using namespace std;
 
+double sqr(double a) { return a*a; }
+
+// This code may or may not be helpful. :) It computes a 
+//  disparity map by looking for best correspondences for each
+//  window independently (no MRF).
+//
+CImg<double> naive_stereo(const CImg<double> &input1, const CImg<double> &input2, int window_size, int max_disp)
+{  
+  CImg<double> result(input1.width(), input1.height());
+  CImg<double> D = compute_disparity_costs(input1, input2, window_size, max_disp);
+
+  for(int i=0; i<D.height(); i++)
+    for(int j=0; j<D.width(); j++)
+      {
+	pair<int, double> best_disp(0, INFINITY);
+
+	for (int d=0; d < max_disp; d++)
+	  {
+	    double cost = 0;
+	    for(int ii = max(i-window_size, 0); ii <= min(i+window_size, input1.height()-1); ii++)
+	      for(int jj = max(j-window_size, 0); jj <= min(j+window_size, input1.width()-1); jj++)
+		cost += sqr(input1(min(jj+d, input1.width()-1), ii) - input2(jj, ii));
+
+	    if(cost < best_disp.second)
+	      best_disp = make_pair(d, cost);
+	  }
+	result(j,i) = best_disp.first;
+      }
+
+  return result;
+}
+
+// implement this!
+//  this placeholder just returns a random disparity map
+//
 CImg<double> mrf_stereo(const CImg<double> &img1, const CImg<double> &img2)
 {
-  // implement this in step 4...
-  //  this placeholder just returns a random disparity map
-  CImg<double> result(img1.height(), img1.width());
+  CImg<double> result(img1.width(), img1.height());
 
   for(int i=0; i<img1.height(); i++)
     for(int j=0; j<img1.width(); j++)
@@ -52,19 +92,19 @@ int main(int argc, char *argv[])
         gt(j,i) = gt(j,i) / 3.0;
   }
   
+  // do naive stereo (matching only, no MRF)
+  CImg<double> naive_disp = naive_stereo(image1, image2, 5, 50);
+  naive_disp.get_normalize(0,255).save((input_filename1 + "-disp_naive.png").c_str());
+
   // do stereo using mrf
-  CImg<double> disp3 = mrf_stereo(image1, image2);
-  disp3.get_normalize(0,255).save((input_filename1 + "-disp_mrf.png").c_str());
+  CImg<double> mrf_disp = mrf_stereo(image1, image2);
+  mrf_disp.get_normalize(0,255).save((input_filename1 + "-disp_mrf.png").c_str());
 
   // Measure error with respect to ground truth, if we have it...
   if(gt_filename != "")
     {
-      double err=0;
-      for(int i=0; i<gt.height(); i++)
-	for(int j=0; j<gt.width(); j++)
-	  err += sqrt((disp3(j,i) - gt(j,i))*(disp3(j,i) - gt(j,i)));
-
-      cout << "MRF stereo technique mean error = " << err/gt.height()/gt.width() << endl;
+      cout << "Naive stereo technique mean error = " << (naive_disp-gt).sqr().sum()/gt.height()/gt.width() << endl;
+      cout << "MRF stereo technique mean error = " << (mrf_disp-gt).sqr().sum()/gt.height()/gt.width() << endl;
 
     }
 
