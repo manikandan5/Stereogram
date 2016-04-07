@@ -25,10 +25,9 @@ double sqr(double a) { return a*a; }
 CImg<double> naive_stereo(const CImg<double> &input1, const CImg<double> &input2, int window_size, int max_disp)
 {  
   CImg<double> result(input1.width(), input1.height());
-  CImg<double> D = compute_disparity_costs(input1, input2, window_size, max_disp);
 
-  for(int i=0; i<D.height(); i++)
-    for(int j=0; j<D.width(); j++)
+  for(int i=0; i<input1.height(); i++)
+    for(int j=0; j<input1.width(); j++)
       {
 	pair<int, double> best_disp(0, INFINITY);
 
