@@ -2,6 +2,7 @@
 // D. Crandall
 //
 //
+#define PI 3.14
 #include <vector>
 #include <iostream>
 #include <fstream>
@@ -21,15 +22,98 @@ public:
   int row, col;
 };
 
+double get_gaussian_probability(const double val, const double mean, const double variance)
+{
+  return ((1/(sqrt(variance*2*PI)))*exp(-1*pow((val-mean),2)/(2*variance)));
+}
+
+double get_cost(const double label, const double val, const double mean, const double variance)
+{
+
+}
+
+
 CImg<double> naive_segment(const CImg<double> &img, const vector<Point> &fg, const vector<Point> &bg)
 {
   // implement this in step 2...
   //  this placeholder just returns a random disparity map
   CImg<double> result(img.width(), img.height());
+  double tot[3], mean[3], var[3];
+  double beta = 2;
+  double cost = 0;
+
+  //Calculating mean for each of the Red, Green and Blue channels of the Foreground Pixels
+  int fg_length = fg.size();
+
+  tot[0] = tot[1] = tot[2] = 0;
+
+  for(int i=0; i<fg_length;i++)
+  {
+    tot[0] = tot[0] + img(fg[i].col,fg[i].row,0,0);
+    tot[1] = tot[1] + img(fg[i].col,fg[i].row,0,1);
+    tot[2] = tot[2] + img(fg[i].col,fg[i].row,0,2);
+  }
+
+  mean[0] = tot[0]/fg_length;
+  mean[1] = tot[1]/fg_length;
+  mean[2] = tot[2]/fg_length;
+
+  tot[0] = tot[1] = tot[2] = 0;
+
+  //Calculating Variance for the Foreground Pixels
+
+  for(int i=0;i<fg_length;i++)
+  {
+    tot[0] = tot[0] + pow((img(fg[i].col,fg[i].row,0,0) - mean[0]),2);
+    tot[1] = tot[1] + pow((img(fg[i].col,fg[i].row,0,1) - mean[1]),2);
+    tot[2] = tot[2] + pow((img(fg[i].col,fg[i].row,0,2) - mean[2]),2);
+  }
+
+  var[0] = tot[0]/fg_length;
+  var[1] = tot[1]/fg_length;
+  var[2] = tot[2]/fg_length;
+
+
+
+  for(int i=0;i<fg_length;i++)
+  {
+    result(fg[i].col,fg[i].row,0,0) = 255;
+    result(fg[i].col,fg[i].row,0,1) = 255;
+    result(fg[i].col,fg[i].row,0,2) = 255;
+  }
+
+  for(int i=0;i<bg.size();i++)
+  {
+    result(bg[i].col,bg[i].row,0,0) = 0;
+    result(bg[i].col,bg[i].row,0,1) = 0;
+    result(bg[i].col,bg[i].row,0,2) = 0;
+  }
 
   for(int i=0; i<img.height(); i++)
     for(int j=0; j<img.width(); j++)
-      result(j, i, 0, 0) = rand() % 2;
+    {
+      if((result(j,i,0,0) != 0) || (result(j,i,0,0) != 255))
+      {
+        for(int k=0;k<3;k++)
+        {
+          cost = cost + (-1.0)*log(get_gaussian_probability(img(j,i,0,k),mean[k],var[k]));
+        }
+
+        if(cost < beta)
+        {
+          result(j,i,0,0) = 255;
+          result(j,i,0,1) = 255;
+          result(j,i,0,2) = 255;
+        }
+        else
+        {
+          result(j,i,0,0) = 0;
+          result(j,i,0,1) = 0;
+          result(j,i,0,2) = 0;
+        }
+
+      }
+    }
 
   return result;
 }
