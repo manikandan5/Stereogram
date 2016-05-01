@@ -39,7 +39,7 @@ CImg<double> naive_segment(const CImg<double> &img, const vector<Point> &fg, con
 	//  this placeholder just returns a random disparity map
 	CImg<double> result(img.width(), img.height(),1,3);
 	double tot[3], mean[3], var[3];
-	double beta = 22;
+	double beta = 24;
 	double cost = 0;
 
 	//Calculating mean for each of the Red, Green and Blue channels of the Foreground Pixels
@@ -136,20 +136,29 @@ void output_segmentation(const CImg<double> &img, const CImg<double> &labels, co
 	assert(img.width() == labels.width());
 
 	CImg<double> img_fg = img, img_bg = img;
-
+    
+    CImg<double> img_disp = img;
+    
 	for(int i=0; i<labels.height(); i++)
 	{
 		for(int j=0; j<labels.width(); j++)
 		{
 			if(labels(j,i) == 0)
-				img_fg(j,i,0,0) = img_fg(j,i,0,1) = img_fg(j,i,0,2) = 0;
+            {
+                img_fg(j,i,0,0) = img_fg(j,i,0,1) = img_fg(j,i,0,2) = 0;
+                img_disp(j,i,0,0) = img_disp(j,i,0,1) = img_disp(j,i,0,2) = 0;
+            }
 			else if(labels(j,i) == 1)
+            {
 				img_bg(j,i,0,0) = img_bg(j,i,0,1) = img_bg(j,i,0,2) = 0;
-			else
+                img_disp(j,i,0,0) = img_disp(j,i,0,1) = img_disp(j,i,0,2) = 255;
+            }
+            else
 				assert(0);
 		}
 	}
-
+    
+    img_disp.get_normalize(0,255).save((fname + "_disp.png").c_str());
 	img_fg.get_normalize(0,255).save((fname + "_fg.png").c_str());
 	img_bg.get_normalize(0,255).save((fname + "_bg.png").c_str());
 }
@@ -159,10 +168,8 @@ int main(int argc, char *argv[])
 	string input_filename1, input_filename2;
 	if(argc != 3)
 	{
-		input_filename1 = "./part2/cardinal.png";
-		input_filename2 = "./part2/cardinal-seeds.png";
-		//cerr << "usage: " << argv[0] << " image_file seeds_file" << endl;
-		//return 1;
+		cerr << "usage: " << argv[0] << " image_file seeds_file" << endl;
+		return 1;
 	}
 	else
 	{
