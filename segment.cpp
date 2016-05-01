@@ -10,9 +10,16 @@
 #include <math.h>
 #include <CImg.h>
 #include <assert.h>
+#include <limits>
 
 using namespace cimg_library;
 using namespace std;
+
+double beta = 22;
+double tot[3], mean[3], var[3];
+
+#define INF numeric_limits<float>::infinity()
+
 
 class Point
 {
@@ -38,8 +45,8 @@ CImg<double> naive_segment(const CImg<double> &img, const vector<Point> &fg, con
 	// implement this in step 2...
 	//  this placeholder just returns a random disparity map
 	CImg<double> result(img.width(), img.height(),1,3);
-	double tot[3], mean[3], var[3];
-	double beta = 24;
+	//double tot[3], mean[3], var[3];
+	//double beta = 24;
 	double cost = 0;
 
 	//Calculating mean for each of the Red, Green and Blue channels of the Foreground Pixels
@@ -121,7 +128,158 @@ CImg<double> mrf_segment(const CImg<double> &img, const vector<Point> &fg, const
 {
 	// implement this in step 3...
 	//  this placeholder just returns a random disparity map by calling naive_segment
-	return naive_segment(img, fg, bg);
+	cout << "debug 1" << endl;
+
+   CImg <double> new_message(img.width(), img.height(),1,4);
+   CImg <double> old_message(img.width(), img.height(),1,4);
+   int no_of_neighbors = 4;
+   int no_of_labels = 2;
+   cout << "No. of Channels:"<< new_message.spectrum() << endl;
+   
+   for(int i=0; i<img.height(); i++)
+  {
+    for(int j=0; j<img.width(); j++)
+    {   
+      for(int k = 0; k < no_of_neighbors ; k++)
+      {
+        for(int l = 0; l < no_of_labels ; l++)
+        {
+            new_message(j,i,l,0) = 0;        //Bottle Neck #############################
+
+            old_message(j,i,l,0) = 0;        // Here apart from 0 , 3rd parameter not taking any value
+        }
+      }
+    }
+  }
+  
+  
+  cout << "debug 2" << endl;
+
+  // assigning 0 to bg pixel , 1 to foreground pixel
+  int fg_length = fg.size();
+  CImg<double> result(img.width(), img.height(),1,3);
+  
+  
+  	for(int i=0; i < fg_length; i++)
+	{
+		result(fg[i].col,fg[i].row,0,0) = 1;
+		result(fg[i].col,fg[i].row,0,1) = 1;
+		result(fg[i].col,fg[i].row,0,2) = 1;
+	}
+
+	for(int i=0;i<bg.size();i++)
+	{
+		result(bg[i].col,bg[i].row,0,0) = 0;
+		result(bg[i].col,bg[i].row,0,1) = 0;
+		result(bg[i].col,bg[i].row,0,2) = 0;
+	}
+  
+  cout << "debug 3" << endl; 
+
+  int neighbor_Count = 4;
+  int message_tuple_size = 2;
+  double alpha = 0.5;
+  double entropy_j =1;  
+  double min_entropy_label = 0;
+  double energy_value_from_neighbors = 0;
+  double entropy_m_i_j = 1000;         
+  double D_i = 1.0;
+  double V = 0;
+  double D_j = 0;  //D = findDistance(); for j
+	  	
+  min_entropy_label = 0;
+      			  	//energy_value_from_neighbors for 0,1
+  
+  
+  cout << "before 5 loops" << endl;
+  
+  double cost = 0;
+  int N = 10;   // needs to run for 5 times
+  
+  while(N > 0)
+  {
+   for(int i=1; i<img.height()-1; i++)
+  {
+    for(int j=1; j<img.width()-1; j++)
+    {     
+      //if((result(j,i,0,0) != 0) || (result(j,i,0,0) != 1))  //And operator makes more sense here.
+      //for (int k = 0; k < no_of_neighbors; k++) 
+      //{
+        for(int l = 0; l < no_of_labels ; l++)  // all the labels node j can take ( i->j )
+        {
+          double jNodeDCost = 0;
+
+
+          if(l == 0)
+          	jNodeDCost = beta;
+          else
+          {
+			  for(int k=0;k<3;k++)
+			  {
+				jNodeDCost = jNodeDCost + (-1.0)*log(get_gaussian_probability(img(j,i+1,0,k),mean[k],var[k]));   //if label = 1 , calculate G_pdf for node j
+			  }
+		  }
+          
+          for(int mi = 0; mi < no_of_labels ; mi++)  // all the labels node i take
+          {
+                //cout << i << "  " << j << "   "<< k << "   " << l <<endl;
+				energy_value_from_neighbors +=   old_message(j,i-1,l,0) + old_message(j,i+1,l,1) + old_message(j-1,i,l,2) ; //here 3rd parameter l can take 0 or 1
+
+				if(l != mi)
+				 V = 1;
+
+				 if (mi == 0)
+				 D_i = beta;
+				 else
+				 {
+					 for(int k=0;k<3;k++)
+					 {
+						cost = cost + (-1.0)*log(get_gaussian_probability(img(j,i,0,k),mean[k],var[k])); //if label = 1 , calculate G_pdf for node i
+					 }
+					 D_i = cost;
+				 }
+
+				 int dummy;
+
+				 //cin >> dummy;
+				if( (D_i + alpha * V + energy_value_from_neighbors) < entropy_m_i_j ) // get minimum of energry values that node i thinks j should have
+					entropy_m_i_j =  D_i + alpha * V + energy_value_from_neighbors;
+          }
+            
+              D_j = jNodeDCost;
+             if(entropy_m_i_j + D_j < entropy_j)
+           	    min_entropy_label = l;		//this is alphabet l not number one		 
+           }
+         // }
+         
+       			  
+                  
+         if(min_entropy_label == 0)
+          {	
+            result(j,i+1,0,0) = 0;
+            result(j,i+1,0,0) = 0;
+            result(j,i+1,0,0) = 0;
+       	  }
+       	  else
+       	  {
+       	    result(j,i+1,0,0) = 255;
+            result(j,i+1,0,0) = 255;
+            result(j,i+1,0,0) = 255;
+		  }
+
+    }
+  }
+         
+    N--;
+  }
+
+  //return naive_segment(img, fg, bg);
+  
+  result.save("resultt.png");
+  
+  return result;
+  
+  //return naive_segment(img, fg, bg);
 }
 
 // Take in an input image and a binary segmentation map. Use the segmentation map to split the 
