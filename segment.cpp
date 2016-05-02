@@ -237,7 +237,6 @@ CImg<double> mrf_segment(const CImg<double> &img, const vector<Point> &fg, const
   // cout << "debug 1" << endl;
    
   int neighbor_Count = 4;
-  int message_tuple_size = 2;
   double alpha = 10;
   double entropy_j =1000;  
   double min_entropy_label = 0;
@@ -259,23 +258,23 @@ CImg<double> mrf_segment(const CImg<double> &img, const vector<Point> &fg, const
    
    vector< vector <NCost> > NeighborEnergyValues(img.height(), vector<NCost>(img.width()));
  
-   //intializeEnergyMessages(img, fg, bg, NeighborEnergyValues);
+   intializeEnergyMessages(img, fg, bg, NeighborEnergyValues);
    
   // testIntitilaization(img,NeighborEnergyValues);
 
    cout << "Loopy BP started" << endl;
    double cost = 0;
-   int N = 2;   
-   int Energy_I = 0;
+   int N = 10;   
+   double Energy_I = 0;
+   double Energy_J = 0;
    int sentNode =0; 
-    CImg<double> result(img.width(), img.height(),1,3);
+   
 
 //while(N>0)
-result =  naive_segment(img, fg, bg); 
+//result =  naive_segment(img, fg, bg); 
 
 
-if(img.width()  < 0 && img.height() < 0)
-  {
+
   while(N > 0)
   {
    for(int i=1; i<img.height()-1; i++)
@@ -287,21 +286,21 @@ if(img.width()  < 0 && img.height() < 0)
        min_entropy_label = 0; 
        entropy_m_i_j = 0;
         for(int l = 0; l < no_of_labels ; l++)  // all the labels node j can take ( i->j )
-        { Energy_I =0;
+        { 
           
           for(int mi = 0; mi < no_of_labels ; mi++)  // all the labels node i take
-          {  
+          {  Energy_I =0;
               D_i =  NeighborEnergyValues[j][i].NeighborsCost[4][mi];    
               for (int tempK = 0 ; tempK < 4 ; tempK++ ) // receive message from all neighbors except from the one i am sending
               {  
                 if(k != tempK)
-                D_i += NeighborEnergyValues[j][i].NeighborsCost[tempK][mi];
+                Energy_I += NeighborEnergyValues[j][i].NeighborsCost[tempK][mi];
               }         
               //cout << D_i << endl;
                                                
     				   if(l != mi) V = 1;
                                 
-               Energy_I = D_i + alpha * V + energy_value_from_neighbors;         
+               Energy_I += D_i + alpha * V;         
                //cout << "E_i  " << Energy_I << endl;              
                                
        				 if( Energy_I < entropy_m_i_j ) // get minimum of energry values that node i thinks j should have
@@ -339,32 +338,36 @@ if(img.width()  < 0 && img.height() < 0)
                  sentNode = 1;
              }
 
-            // NeighborEnergyValues[j][i].NeighborsCost[k][l] = entropy_m_i_j + D_j;  // updating neighbors messages what i think of them        
-             NeighborEnergyValues[TempNghbr.col][TempNghbr.row].NeighborsCost[sentNode][l] = entropy_m_i_j + D_j;
+            // NeighborEnergyValues[j][i].NeighborsCost[k][l] = entropy_m_i_j + D_j;  // updating neighbors messages what i think of them 
+             
+             Energy_J = entropy_m_i_j + D_j;
+             
+             
+             //cout << "E_J: " << Energy_J << endl;      
+             NeighborEnergyValues[TempNghbr.col][TempNghbr.row].NeighborsCost[sentNode][l] = Energy_J ;
             
             
-            // if(entropy_m_i_j + D_j < entropy_j)
-        	   // min_entropy_label = l;		//this is alphabet l not number one	
-              
-              //cout << "E_j  "  << entropy_m_i_j + D_j <<endl;	 
-       }
            
+      }
+            int dummy;
+            //cin >> dummy;
      } // end of k loop
     } // end of j loop
   }  // end of i loop
   
-  //cout << N <<endl;  
+  cout << N <<endl;  
     N--;
  } // end of while loop
  
-} 
 
 
- if( img.width()  < 0 && img.height() < 0)
- {
  double final_cost = 0;
  double compare_cost = 10000;
  int minClass = 0;
+ CImg<double> result(img.width(), img.height());
+  
+  cout << "h: " << img.height() << " w: " << img.width();
+ 
  for(int a=1; a<img.height()-1; a++)
   {
     for(int b=1; b<img.width()-1; b++)
@@ -378,10 +381,13 @@ if(img.width()  < 0 && img.height() < 0)
         for(int dk =0 ; dk < 4; dk++)
         {
           final_cost += NeighborEnergyValues[b][a].NeighborsCost[dk][nc];
-          //cout << final_cost << endl;
+         // cout << final_cost << endl;
         }  
            
-          //cout << final_cost << endl;
+         // cout << final_cost << endl;
+          
+          int dummy;
+          //cin >> dummy;
            
           if (final_cost < compare_cost)
           {
@@ -389,13 +395,24 @@ if(img.width()  < 0 && img.height() < 0)
             minClass = nc;
           }
       }  
+      
+      //cout << "a: "  << a << " b: "<< b << endl; 
+      
+      
+      
         if(minClass == 0)
-        result(b,a) = 0;
+        {
+            result(b,a,0,0) = 0;
+            result(b,a,0,1) = 0;
+            result(b,a,0,1) = 0;
+        }
      	  else
-        result(b,a) = 1;
-  
-    }
- }
+        {
+            result(b,a,0,0) = 1;
+            result(b,a,0,1) = 1;
+            result(b,a,0,2) = 1;
+        }
+      }
     }
     
   result.save("result_mrf.png");
@@ -483,13 +500,13 @@ int main(int argc, char *argv[])
 	}
 
 	// do naive segmentation
-	CImg<double> labels = naive_segment(image_rgb, fg_pixels, bg_pixels);
-	//output_segmentation(image_rgb, labels, input_filename1 + "-naive_segment_result");
+	CImg<double> labels_naive = naive_segment(image_rgb, fg_pixels, bg_pixels);
+	//output_segmentation(image_rgb, labels_naive, input_filename1 + "-naive_segment_result");
 
 	// do mrf segmentation
-	labels = mrf_segment(image_rgb, fg_pixels, bg_pixels);
+	CImg<double>  labels_mrf = mrf_segment(image_rgb, fg_pixels, bg_pixels);
   cout << "final test" <<endl;
-	output_segmentation(image_rgb, labels, input_filename1 + "-mrf_segment_result");
+	output_segmentation(image_rgb, labels_mrf, input_filename1 + "-mrf_segment_result");
 
 	return 0;
 }
