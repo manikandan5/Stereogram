@@ -59,7 +59,16 @@ CImg<double> mrf_stereo(const CImg<double> &img1, const CImg<double> &img2)
       result(j,i) = rand() % 256;
 
   return result;
+  
+  
+  
+  
+  
+  
 }
+
+
+
 
 
 
