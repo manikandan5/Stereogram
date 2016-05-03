@@ -187,25 +187,25 @@ void intializeEnergyMessages(const CImg<double> &img, const vector<Point> &fg, c
       			  {
       				  NodeDCost = NodeDCost + (-1.0)*log(get_gaussian_probability(img(j,i,0,k),mean[k],var[k]));   
       			  }
-              NeighborEnergyValues[j][i].NeighborsCost[4][0] = beta;  
-              NeighborEnergyValues[j][i].NeighborsCost[4][1] = NodeDCost;   
+              NeighborEnergyValues[i][j].NeighborsCost[4][0] = beta;
+              NeighborEnergyValues[i][j].NeighborsCost[4][1] = NodeDCost;
               
               //cout <<  NodeDCost << endl;
         }
         else if(pixeltype == 1)
         {
-          NeighborEnergyValues[j][i].NeighborsCost[4][0] = 1000;  
-          NeighborEnergyValues[j][i].NeighborsCost[4][1] = 0;
+          NeighborEnergyValues[i][j].NeighborsCost[4][0] = 1000;
+          NeighborEnergyValues[i][j].NeighborsCost[4][1] = 0;
         }
         else
         {
-          NeighborEnergyValues[j][i].NeighborsCost[4][0] = 0;  
-          NeighborEnergyValues[j][i].NeighborsCost[4][1] = 1000;
+          NeighborEnergyValues[i][j].NeighborsCost[4][0] = 0;
+          NeighborEnergyValues[i][j].NeighborsCost[4][1] = 1000;
         }
         for(int k=0; k<4; k++)
         {
-          NeighborEnergyValues[j][i].NeighborsCost[k][0] = 0;  
-          NeighborEnergyValues[j][i].NeighborsCost[k][1] = 0;    
+          NeighborEnergyValues[i][j].NeighborsCost[k][0] = 0;
+          NeighborEnergyValues[i][j].NeighborsCost[k][1] = 0;
         }
         
     }
@@ -221,7 +221,7 @@ void testIntitilaization(const CImg<double> &img,  vector< vector <NCost> > &Nei
   {
     for(int j=1; j<img.width()-1; j++)
     { 
-       cout << "0  " <<  NeighborEnergyValues[j][i].NeighborsCost[4][0] << "  1  " << NeighborEnergyValues[j][i].NeighborsCost[4][1] << endl;
+       cout << "0  " <<  NeighborEnergyValues[j][i].NeighborsCost[4][0] << "  1  " << NeighborEnergyValues[i][j].NeighborsCost[4][1] << endl;
     }
     
   }
@@ -237,17 +237,15 @@ CImg<double> mrf_segment(const CImg<double> &img, const vector<Point> &fg, const
   // cout << "debug 1" << endl;
    
   int neighbor_Count = 4;
-  double alpha = 10;
+  double alpha = 0.40;
   double entropy_j =1000;  
   double min_entropy_label = 0;
   double energy_value_from_neighbors = 0;
-  double entropy_m_i_j = 1000;         
+  double entropy_m_i_j = 100000;
   double D_i = 1.0;
   double V = 0;
   double D_j = 0;  //D = findDistance(); for j
-  
-   CImg <double> new_message(img.width(), img.height(),1,4);
-   CImg <double> old_message(img.width(), img.height(),1,4);
+
    int no_of_neighbors = 4;
    int no_of_labels = 2;
 
@@ -264,7 +262,7 @@ CImg<double> mrf_segment(const CImg<double> &img, const vector<Point> &fg, const
 
    cout << "Loopy BP started" << endl;
    double cost = 0;
-   int N = 10;   
+   int N = 100;
    double Energy_I = 0;
    double Energy_J = 0;
    int sentNode =0; 
@@ -290,11 +288,11 @@ CImg<double> mrf_segment(const CImg<double> &img, const vector<Point> &fg, const
           
           for(int mi = 0; mi < no_of_labels ; mi++)  // all the labels node i take
           {  Energy_I =0;
-              D_i =  NeighborEnergyValues[j][i].NeighborsCost[4][mi];    
+              D_i =  NeighborEnergyValues[i][j].NeighborsCost[4][mi];
               for (int tempK = 0 ; tempK < 4 ; tempK++ ) // receive message from all neighbors except from the one i am sending
               {  
                 if(k != tempK)
-                Energy_I += NeighborEnergyValues[j][i].NeighborsCost[tempK][mi];
+                Energy_I += NeighborEnergyValues[i][j].NeighborsCost[tempK][mi];
               }         
               //cout << D_i << endl;
                                                
@@ -311,21 +309,21 @@ CImg<double> mrf_segment(const CImg<double> &img, const vector<Point> &fg, const
                
              if(k == 0)       // left neighbor     
              {  
-                 D_j = NeighborEnergyValues[j-1][i].NeighborsCost[4][l];
+                 D_j = NeighborEnergyValues[i][j-1].NeighborsCost[4][l];
                  TempNghbr.col = j-1;
                  TempNghbr.row = i;
                  sentNode =2; 
              }
              else if(k == 1) // up neighbor
              {
-                 D_j = NeighborEnergyValues[j][i-1].NeighborsCost[4][l];
+                 D_j = NeighborEnergyValues[i-1][j].NeighborsCost[4][l];
                  TempNghbr.col = j;
                  TempNghbr.row = i-1;
                  sentNode =3;
              }
              else if(k == 2) // right neighbor
              {
-                 D_j = NeighborEnergyValues[j+1][i].NeighborsCost[4][l];
+                 D_j = NeighborEnergyValues[i][j+1].NeighborsCost[4][l];
                  TempNghbr.col = j+1;
                  TempNghbr.row = i;
                  sentNode =0;
@@ -333,8 +331,8 @@ CImg<double> mrf_segment(const CImg<double> &img, const vector<Point> &fg, const
              else           //  down neighbor
              {
                  D_j = NeighborEnergyValues[j][i+1].NeighborsCost[4][l];
-                 TempNghbr.col = j-1;
-                 TempNghbr.row = i;
+                 TempNghbr.col = j;
+                 TempNghbr.row = i+1;
                  sentNode = 1;
              }
 
@@ -344,7 +342,7 @@ CImg<double> mrf_segment(const CImg<double> &img, const vector<Point> &fg, const
              
              
              //cout << "E_J: " << Energy_J << endl;      
-             NeighborEnergyValues[TempNghbr.col][TempNghbr.row].NeighborsCost[sentNode][l] = Energy_J ;
+             NeighborEnergyValues[TempNghbr.row][TempNghbr.col].NeighborsCost[sentNode][l] = Energy_J ;
             
             
            
@@ -365,22 +363,36 @@ CImg<double> mrf_segment(const CImg<double> &img, const vector<Point> &fg, const
  double compare_cost = 10000;
  int minClass = 0;
  CImg<double> result(img.width(), img.height());
-  
-  cout << "h: " << img.height() << " w: " << img.width();
+ cout << "checkpoint 1" << endl;
+ result.fill(img);
+ result.fill(0);
+
+ /*
+ for(int i = 0;i<img.height();i++)
+ {
+    cout << i << endl;
+    for(int j = 0; j < img.width(); j++)
+    {
+        result(j,i) = 0;
+    }
+ }
+ */
+
+ cout << "h: " << img.height() << " w: " << img.width() << endl;
  
  for(int a=1; a<img.height()-1; a++)
   {
     for(int b=1; b<img.width()-1; b++)
     { 
-      compare_cost = 1000;
+      compare_cost = 100000;
       for(int nc=0; nc < 2 ;nc++)
       {
         final_cost = 0;
-        final_cost += NeighborEnergyValues[b][a].NeighborsCost[4][nc];
+        final_cost += NeighborEnergyValues[a][b].NeighborsCost[4][nc];
         //cout << final_cost << endl;
         for(int dk =0 ; dk < 4; dk++)
         {
-          final_cost += NeighborEnergyValues[b][a].NeighborsCost[dk][nc];
+          final_cost += NeighborEnergyValues[a][b].NeighborsCost[dk][nc];
          // cout << final_cost << endl;
         }  
            
@@ -396,21 +408,25 @@ CImg<double> mrf_segment(const CImg<double> &img, const vector<Point> &fg, const
           }
       }  
       
-      //cout << "a: "  << a << " b: "<< b << endl; 
+      //cout << "a: "  << a << " b: "<< b << endl;
       
       
       
         if(minClass == 0)
         {
-            result(b,a,0,0) = 0;
-            result(b,a,0,1) = 0;
-            result(b,a,0,1) = 0;
+         //   cout << "a: "  << a << " b: "<< b << " in if then" << endl;
+            result(b,a) = 0;
+            //result(b,a,0,1) = 0;
+            //result(b,a,0,2) = 0;
+
         }
      	  else
         {
-            result(b,a,0,0) = 1;
-            result(b,a,0,1) = 1;
-            result(b,a,0,2) = 1;
+           // cout << "a: "  << a << " b: "<< b << " in if else" << endl;
+            result(b,a) = 1;
+            //result(b,a,0,1) = 1;
+            //result(b,a,0,2) = 1;
+
         }
       }
     }
@@ -456,7 +472,10 @@ void output_segmentation(const CImg<double> &img, const CImg<double> &labels, co
                 img_disp(j,i,0,0) = img_disp(j,i,0,1) = img_disp(j,i,0,2) = 255;
             }
             else
+            {
+			    cout << " Row= " <<i << " " << "Col = " << j << " Label = " << labels(j,i) << endl;
 				assert(0);
+			}
 		}
 	}
     
@@ -501,11 +520,12 @@ int main(int argc, char *argv[])
 
 	// do naive segmentation
 	CImg<double> labels_naive = naive_segment(image_rgb, fg_pixels, bg_pixels);
-	//output_segmentation(image_rgb, labels_naive, input_filename1 + "-naive_segment_result");
-
+	output_segmentation(image_rgb, labels_naive, input_filename1 + "-naive_segment_result");
+    cout << "height = " << image_rgb.height() << " width= " << image_rgb.width() << endl;
 	// do mrf segmentation
 	CImg<double>  labels_mrf = mrf_segment(image_rgb, fg_pixels, bg_pixels);
-  cout << "final test" <<endl;
+    cout << "final test" <<endl;
+    cout << "Input filename = " << input_filename1 << endl;
 	output_segmentation(image_rgb, labels_mrf, input_filename1 + "-mrf_segment_result");
 
 	return 0;
