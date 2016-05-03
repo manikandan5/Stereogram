@@ -138,7 +138,7 @@ CImg<double> mrf_stereo(const CImg<double> &img1, const CImg<double> &img2)
 
   cout << "Loopy BP started" << endl;
   double cost = 0;
-  int N = 1000;
+  int N = 100;
   double Energy_I = 0;
   double Energy_J = 0;
   int sentNode =0; 

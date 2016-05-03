@@ -130,21 +130,14 @@ CImg<double> naive_segment(const CImg<double> &img, const vector<Point> &fg, con
 	return result;
 }
 
-
-
 typedef struct NeighbrCost
 {
   double NeighborsCost[5][2];
     
 }NCost;
 
-   
-
 int checkIfBGorFG(int w ,int h,const vector<Point> &fg, const vector<Point> &bg )
 {
-    //cout <<"hello"<<endl;
-    //int dummy;
-    //cin >> dummy;
     int type = 0;
     for(int i = 0; i < fg.size() ; i++)
     {
@@ -330,7 +323,7 @@ CImg<double> mrf_segment(const CImg<double> &img, const vector<Point> &fg, const
              }
              else           //  down neighbor
              {
-                 D_j = NeighborEnergyValues[j][i+1].NeighborsCost[4][l];
+                 D_j = NeighborEnergyValues[i+1][j].NeighborsCost[4][l];
                  TempNghbr.col = j;
                  TempNghbr.row = i+1;
                  sentNode = 1;
